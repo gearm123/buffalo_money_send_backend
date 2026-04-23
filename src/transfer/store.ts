@@ -22,3 +22,10 @@ export function getTransferByPaymentIntent(paymentIntentId: string) {
   }
   return undefined;
 }
+
+export function getTransferByCollectionOrderId(orderId: string) {
+  for (const t of transfers.values()) {
+    if (t.collectionOrderId === orderId) return t;
+  }
+  return undefined;
+}

@@ -27,6 +27,37 @@ export async function mockThunesProxy(
   query?: Record<string, string | undefined>
 ): Promise<{ status: number; data: unknown }> {
   const base = "/v2/money-transfer";
+  const acceptP = "/v1/payment";
+
+  /** Thunes Collection (Accept) – instant CHARGED in mock for local e2e without a hosted pay page. */
+  if (method === "POST" && path === `${acceptP}/payment-orders`) {
+    const b = body as Json;
+    const id = `acc-mock-${7000000 + nextQid()}`;
+    return {
+      status: 201,
+      data: {
+        id,
+        external_id: b.external_id,
+        status: "CHARGED",
+        requested: b.requested,
+        payment_url: null,
+        creation_date: new Date().toISOString(),
+        merchant_id: b.merchant_id,
+        integration_mode: b.integration_mode ?? "REDIRECT",
+      },
+    };
+  }
+  if (method === "GET" && new RegExp(`^${acceptP}/payment-orders/[^/]+$`).test(path)) {
+    const id = path.split("/").pop() as string;
+    return {
+      status: 200,
+      data: {
+        id,
+        status: "CHARGED",
+        payment_url: null,
+      },
+    };
+  }
 
   if (method === "GET" && path.startsWith(`${base}/payers`) && !path.startsWith(`${base}/payers/`)) {
     const c = query?.country_iso_code ?? "THA";

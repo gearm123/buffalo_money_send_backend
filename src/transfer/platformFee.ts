@@ -1,7 +1,8 @@
 /**
- * Your platform margin is included in the card charge (see stripeTransfer).
- * It lands in your Stripe account balance; add your bank under Dashboard → Payouts.
- * Set PLATFORM_FEE_PERCENT in server env (e.g. "4" = 4% → $4 on a $100 send; card total $104).
+ * Product model (example: 4% fee, user sends $100):
+ * - Customer is charged totalCharged = amountSend + platformFee → e.g. $104.
+ * - Thunes remittance uses amountSend only → e.g. $100 to the recipient rail; platformFee stays in your Stripe balance (after Stripe processing fees).
+ * Set PLATFORM_FEE_PERCENT in server env (e.g. "4" = 4% of send → $4 fee on $100; card $104).
  */
 export function getPlatformFeePercent(): number {
   const raw = process.env.PLATFORM_FEE_PERCENT;

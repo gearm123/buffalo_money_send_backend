@@ -1,8 +1,11 @@
 export type PayoutToThailandStatus =
   | "awaiting_payment"
-  | "payment_succeeded"
+  | "payout_processing"
+  | "payout_completed"
+  | "payout_error"
+  /** @deprecated */
   | "payout_queued_simulation"
-  | "payout_error";
+  | "payment_succeeded";
 
 export type TransferRecord = {
   id: string;
@@ -28,6 +31,19 @@ export type TransferRecord = {
     accountNumber: string;
   };
   paymentIntentId: string | null;
+  /**
+   * Which `ThailandTransferRail` created this row — see `src/transfer/rail/registry.ts`.
+   * e.g. `thunes_e2e`, `stripe_thunes_payout`, or a future provider id.
+   */
+  railId: string;
+  /**
+   * Provider-agnostic pay-in reference (Thunes Accept order id, etc.).
+   * Null when card is a Stripe PaymentIntent only.
+   */
+  collectionOrderId: string | null;
   status: PayoutToThailandStatus;
   lastError?: string;
+  /** Thunes Money Transfer API — set after a successful flow */
+  thunesQuotationId?: number;
+  thunesTransactionId?: number;
 };

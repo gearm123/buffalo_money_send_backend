@@ -4,7 +4,10 @@ import express from "express";
 import { loadConfig } from "./config.js";
 import { createThunesClient, MT_PREFIX, ThunesHttpError } from "./thunesClient.js";
 import { mockThunesProxy } from "./mockThunes.js";
+import { getPaymentProvider } from "./payment/paymentConfig.js";
 import { registerTransferHttpRoutes } from "./transfer/httpRoutes.js";
+import { resolveThailandTransferRail } from "./transfer/rail/registry.js";
+import { getTransferByCollectionOrderId } from "./transfer/store.js";
 import { handleStripeWebhook } from "./transfer/webhookHandler.js";
 
 dotenv.config();
@@ -39,6 +42,28 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 
 registerTransferHttpRoutes(app);
+
+/** Thunes Accept server-to-server notification — ack fast; idempotency is in thunesPayout. */
+app.post("/api/thunes/accept/notification", (req, res) => {
+  res.sendStatus(200);
+  const body = req.body as { id?: string; payment_order_id?: string; status?: string } | null;
+  const orderId = body && typeof body === "object" ? String(body.id ?? body.payment_order_id ?? "") : "";
+  if (!orderId) return;
+  const t = getTransferByCollectionOrderId(orderId);
+  const rail = resolveThailandTransferRail(t);
+  if (t && rail) {
+    void rail
+      .finalizeFromHttpContext({ transferId: t.id })
+      .then((r) => {
+        if (!r.ok) {
+          console.error("[thunes accept notification] finalize", r.error);
+        }
+      })
+      .catch((err) => {
+        console.error("[thunes accept notification] complete", err);
+      });
+  }
+});
 
 function stringifyQuery(q: express.Request["query"]): Record<string, string | undefined> {
   const out: Record<string, string | undefined> = {};
@@ -104,6 +129,7 @@ app.get("/api/health", (_req, res) => {
     ok: true,
     thunesMode: config.useMock ? "mock" : "live",
     hasBaseUrl: Boolean(config.thunesBaseUrl),
+    paymentProvider: getPaymentProvider(),
     stripe: Boolean(process.env.STRIPE_SECRET_KEY),
   });
 });
@@ -133,6 +159,6 @@ app.get("/api/transactions/:id", (req, res) => {
 
 app.listen(config.port, () => {
   console.log(
-    `global-send-api on http://localhost:${config.port} (Thunes: ${config.useMock ? "MOCK" : "live"}) | Stripe: ${process.env.STRIPE_SECRET_KEY ? "on" : "off"}`
+    `global-send-api on http://localhost:${config.port} (Thunes: ${config.useMock ? "MOCK" : "live"}) | payment: ${getPaymentProvider()} | Stripe: ${process.env.STRIPE_SECRET_KEY ? "on" : "off"}`
   );
 });

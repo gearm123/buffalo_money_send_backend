@@ -1,6 +1,10 @@
 import Stripe from "stripe";
 import { quoteThbForAmount } from "./fx.js";
 import { computePlatformFee } from "./platformFee.js";
+import { executeThunesPayoutByTransferId } from "./thunesPayout.js";
+import { RAIL_STRIPE_THUNES_PAYOUT } from "./rail/railIds.js";
+import { assertAllowedSourceCountry } from "./sourceCountries.js";
+import { validateThaiBankAccount } from "./thaiBankAccount.js";
 import { getTransfer, getTransferByPaymentIntent, saveTransfer } from "./store.js";
 import type { TransferRecord } from "./types.js";
 
@@ -46,6 +50,14 @@ export async function createTransferWithPaymentIntent(input: CreateInput) {
     throw new Error("Receiver country must be Thailand (THA) for this product");
   }
 
+  const fromCountryU = input.fromCountry.toUpperCase().trim();
+  assertAllowedSourceCountry(fromCountryU);
+
+  const acctCheck = validateThaiBankAccount(input.thaiBankCode, input.thaiAccountNumber);
+  if (!acctCheck.ok) {
+    throw new Error(acctCheck.error);
+  }
+
   const { thbReceive, rate } = quoteThbForAmount(input.amount, input.fromCurrency);
   const { platformFee, totalCharged } = computePlatformFee(input.amount);
   const id = crypto.randomUUID();
@@ -54,7 +66,7 @@ export async function createTransferWithPaymentIntent(input: CreateInput) {
   const record: TransferRecord = {
     id,
     createdAt: now,
-    fromCountry: input.fromCountry,
+    fromCountry: fromCountryU,
     toCountry: "THA",
     fromCurrency: input.fromCurrency.toUpperCase(),
     amountSend: input.amount,
@@ -69,6 +81,8 @@ export async function createTransferWithPaymentIntent(input: CreateInput) {
       accountNumber: input.thaiAccountNumber.replace(/\s/g, ""),
     },
     paymentIntentId: null,
+    railId: RAIL_STRIPE_THUNES_PAYOUT,
+    collectionOrderId: null,
     status: "awaiting_payment",
   };
 
@@ -109,9 +123,9 @@ export async function markPaidFromIntent(paymentIntentId: string) {
   const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
   if (pi.status !== "succeeded") return;
 
-  t.status = "payout_queued_simulation";
-  t.lastError = undefined;
-  saveTransfer(t);
+  void executeThunesPayoutByTransferId(t.id).catch((err) => {
+    console.error("[markPaidFromIntent] Thunes payout", err);
+  });
 }
 
 export async function completeTransferClientSide(paymentIntentId: string) {
@@ -131,10 +145,9 @@ export async function completeTransferClientSide(paymentIntentId: string) {
   if (!t) {
     return { ok: false as const, error: "Transfer not found" };
   }
-  t.status = "payout_queued_simulation";
-  t.lastError = undefined;
-  saveTransfer(t);
-  return { ok: true as const, transfer: t };
+  await executeThunesPayoutByTransferId(id);
+  const t2 = getTransfer(id);
+  return { ok: true as const, transfer: t2 ?? t };
 }
 
 export { getStripe };
