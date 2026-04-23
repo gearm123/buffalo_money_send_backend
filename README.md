@@ -24,7 +24,7 @@ Listens on `http://localhost:4000` (or `PORT`). Health: `GET /api/health`.
    - **Build:** `npm install`  
    - **Start:** `npm start`  
    - **Health check path:** `/api/health`
-3. Set environment variables (see `.env.example`).
+3. Set environment variables (see `.env.example`), including `PLATFORM_FEE_PERCENT` (your per-transfer margin) and see `STRIPE_REVENUE.md` for how payouts work.
 
 ## Front end
 

@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
 import { quoteThbForAmount } from "./fx.js";
+import { computePlatformFee } from "./platformFee.js";
 import { getTransfer, listTransfers } from "./store.js";
 import { completeTransferClientSide, createTransferWithPaymentIntent, stripeIsConfigured } from "./stripeTransfer.js";
 import { THAI_BANKS } from "./thaiBanks.js";
@@ -24,7 +25,16 @@ export function registerTransferHttpRoutes(app: Express) {
       return;
     }
     const { thbReceive, rate } = quoteThbForAmount(amount, fromCurrency);
-    res.json({ thbReceive, rate, fromCurrency: fromCurrency.toUpperCase() });
+    const ccyU = fromCurrency.toUpperCase();
+    const { platformFee, totalCharged } = computePlatformFee(amount);
+    res.json({
+      thbReceive,
+      rate,
+      fromCurrency: ccyU,
+      amount,
+      platformFee,
+      totalCharged,
+    });
   });
 
   app.post("/api/transfer/create", async (req, res) => {

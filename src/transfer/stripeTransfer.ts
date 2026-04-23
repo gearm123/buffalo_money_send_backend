@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import { quoteThbForAmount } from "./fx.js";
+import { computePlatformFee } from "./platformFee.js";
 import { getTransfer, getTransferByPaymentIntent, saveTransfer } from "./store.js";
 import type { TransferRecord } from "./types.js";
 
@@ -46,6 +47,7 @@ export async function createTransferWithPaymentIntent(input: CreateInput) {
   }
 
   const { thbReceive, rate } = quoteThbForAmount(input.amount, input.fromCurrency);
+  const { platformFee, totalCharged } = computePlatformFee(input.amount);
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
 
@@ -56,6 +58,8 @@ export async function createTransferWithPaymentIntent(input: CreateInput) {
     toCountry: "THA",
     fromCurrency: input.fromCurrency.toUpperCase(),
     amountSend: input.amount,
+    platformFee,
+    totalCharged,
     thbReceiveEstimate: thbReceive,
     fxRateUsed: rate,
     sender: { fullName: input.senderName, email: input.senderEmail },
@@ -68,7 +72,7 @@ export async function createTransferWithPaymentIntent(input: CreateInput) {
     status: "awaiting_payment",
   };
 
-  const amountMinor = Math.round(input.amount * 100);
+  const amountMinor = Math.round(totalCharged * 100);
 
   const pi = await stripe.paymentIntents.create({
     amount: amountMinor,
@@ -78,11 +82,15 @@ export async function createTransferWithPaymentIntent(input: CreateInput) {
       transfer_id: id,
       to_country: "THA",
       thb_est: String(thbReceive),
+      amount_send: String(input.amount),
+      platform_fee: String(platformFee),
+      total_charged: String(totalCharged),
       bank_code: input.thaiBankCode,
       account_last4: input.thaiAccountNumber.replace(/\D/g, "").slice(-4),
     },
     receipt_email: input.senderEmail,
-    description: `Remittance to TH — ${input.recipientName} (${input.thaiBankCode})`.slice(0, 999),
+    description: `Remittance to TH — ${input.recipientName} (${input.thaiBankCode}) — incl. service fee`
+      .slice(0, 999),
   });
 
   record.paymentIntentId = pi.id;

@@ -10,7 +10,12 @@ export type TransferRecord = {
   fromCountry: string;
   toCountry: string;
   fromCurrency: string;
+  /** Remittance / corridor amount the customer chose (drives the THB estimate). */
   amountSend: number;
+  /** Your platform fee, same currency as amountSend (on top of amountSend for the card total). */
+  platformFee: number;
+  /** What Stripe actually charges: amountSend + platformFee. */
+  totalCharged: number;
   thbReceiveEstimate: number;
   fxRateUsed: number;
   sender: {
