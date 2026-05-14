@@ -26,6 +26,7 @@ This API now uses **PostgreSQL** for persistent storage:
 - Connection config follows the same pattern as the `translate_chat` project: `DATABASE_URL`, `POSTGRES_URL`, or `DATABASE_URL_FILE`.
 
 On **Render**, create a Postgres service and set the web service's **`DATABASE_URL`** to the Postgres service's **Internal Database URL**.
+If you deploy this repo through **Render Blueprint sync**, `render.yaml` can provision the Buffalo Postgres service and wire `DATABASE_URL` automatically.
 
 ## Deploy (Render)
 
@@ -34,6 +35,7 @@ On **Render**, create a Postgres service and set the web service's **`DATABASE_U
    - **Build:** `npm install`  
    - **Start:** `npm start`  
    - **Health check path:** `/api/health`
+   - Blueprint-managed deploys can also create the `buffalomoneysend-db` Postgres database defined in `render.yaml`.
 3. Set environment variables from `.env.example`, especially:
    - `DATABASE_URL`
    - `THUNES_BASE_URL`

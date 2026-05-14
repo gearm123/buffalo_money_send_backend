@@ -1,5 +1,5 @@
 # BuffaloMoneySend API — deploy this repo on Render (Web Service, Node 20)
-# Set DATABASE_URL on this web service to the Internal Database URL from your Render Postgres service.
+# This Blueprint provisions both the backend web service and its managed Postgres database.
 # Dashboard: New → Blueprint → connect this GitHub repo
 
 services:
@@ -15,7 +15,9 @@ services:
       - key: NODE_VERSION
         value: "20.18.0"
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: buffalomoneysend-db
+          property: connectionString
       - key: PAYMENT_PROVIDER
         value: "thunes"
       - key: THUNES_BASE_URL
@@ -36,3 +38,7 @@ services:
         sync: false
       - key: PLATFORM_FEE_PERCENT
         sync: false
+
+databases:
+  - name: buffalomoneysend-db
+    plan: free
