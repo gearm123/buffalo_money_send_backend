@@ -17,7 +17,7 @@ export type TransferRecord = {
   amountSend: number;
   /** Your platform fee, same currency as amountSend (on top of amountSend for the card total). */
   platformFee: number;
-  /** What Stripe actually charges: amountSend + platformFee. */
+  /** What the active collection provider charges: amountSend + platformFee. */
   totalCharged: number;
   thbReceiveEstimate: number;
   fxRateUsed: number;
@@ -30,15 +30,15 @@ export type TransferRecord = {
     bankCode: string;
     accountNumber: string;
   };
+  /** Legacy embedded-card field; unused by the current Thunes checkout path. */
   paymentIntentId: string | null;
   /**
    * Which `ThailandTransferRail` created this row — see `src/transfer/rail/registry.ts`.
-   * e.g. `thunes_e2e`, `stripe_thunes_payout`, or a future provider id.
+   * e.g. `thunes_e2e` today, or a future provider-specific rail id.
    */
   railId: string;
   /**
-   * Provider-agnostic pay-in reference (Thunes Accept order id, etc.).
-   * Null when card is a Stripe PaymentIntent only.
+   * Provider-agnostic pay-in reference (Thunes Accept order id, future supplier order id, etc.).
    */
   collectionOrderId: string | null;
   status: PayoutToThailandStatus;

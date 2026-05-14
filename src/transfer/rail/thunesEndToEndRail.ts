@@ -25,7 +25,7 @@ export const thunesEndToEndRail: ThailandTransferRail = {
 
   async finalizeFromHttpContext(ctx: HttpFinalizeContext): Promise<FinalizeResult> {
     if (ctx.paymentIntentId) {
-      return { ok: false, error: "This transfer is Thunes end-to-end — use transferId, not a Stripe payment intent." };
+      return { ok: false, error: "This transfer uses Thunes end-to-end checkout — complete it with transferId." };
     }
     if (!ctx.transferId) {
       return { ok: false, error: "transferId required" };

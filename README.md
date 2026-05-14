@@ -10,7 +10,7 @@ This was split from a monorepo: **push this directory as its own GitHub reposito
 ```bash
 cd buffalomoneysend-backend
 cp .env.example .env
-# set Thunes and/or Stripe env (see .env.example), including PAYMENT_PROVIDER
+# set Thunes env (see .env.example)
 npm install
 npm run dev
 ```
@@ -24,17 +24,27 @@ Listens on `http://localhost:4000` (or `PORT`). Health: `GET /api/health`.
    - **Build:** `npm install`  
    - **Start:** `npm start`  
    - **Health check path:** `/api/health`
-3. Set environment variables (see `.env.example`), including `PLATFORM_FEE_PERCENT` (your per-transfer margin) and see `STRIPE_REVENUE.md` for how Stripe settlement works.
-4. For **Thailand bank payout** via the Thunes Money Transfer API, set `THUNES_THAILAND_PAYER_ID` to the payer Thunes gives you for that corridor. With `THUNES_USE_MOCK=true`, the mock defaults to `90002` if this is unset. Card capture stays on **Stripe**; the API then creates a Thunes quotation → transaction → confirm toward the recipient account collected on your site.
+3. Set environment variables from `.env.example`, especially:
+   - `THUNES_BASE_URL`
+   - `THUNES_API_KEY`
+   - `THUNES_API_SECRET`
+   - `THUNES_THAILAND_PAYER_ID`
+   - `THUNES_ACCEPT_MERCHANT_ID`
+   - `THUNES_ACCEPT_PAYMENT_PAGE_ID`
+   - `PUBLIC_API_URL`
+   - `PUBLIC_WEB_APP_URL`
+   - `PLATFORM_FEE_PERCENT`
+4. For **Thailand bank payout** via the Thunes Money Transfer API, set `THUNES_THAILAND_PAYER_ID` to the payer Thunes gives you for that corridor. With `THUNES_USE_MOCK=true`, the mock defaults to `90002` if this is unset.
 
 ## Front end
 
 The Vite + React app lives in a **separate repository**. Point it at this API with `VITE_API_BASE=https://<your-service>.onrender.com` and rebuild.
 
-## Card checkout: Thunes vs Stripe
+## Checkout and payout
 
-- **`PAYMENT_PROVIDER=thunes` (default when `STRIPE_SECRET_KEY` is empty):** [Thunes Accept](https://docs.thunes.com/accept/v1) creates a **payment order** (hosted redirect in production; mock can mark **CHARGED** immediately). On success, [Money Transfer](https://docs.thunes.com/money-transfer/v2) sends `amountSend` to the recipient’s Thai bank; your **fee** is `totalCharged - amountSend` in your Thunes **collection** balance (funding and settlement are still per your Thunes contract). Set **`THUNES_ACCEPT_MERCHANT_ID`** and **`THUNES_ACCEPT_PAYMENT_PAGE_ID`** in live mode (and **`PUBLIC_API_URL` / `PUBLIC_WEB_APP_URL`** for redirects).
-- **`PAYMENT_PROVIDER=stripe`:** **Stripe** captures the card; the API then uses **Thunes MT** for the TH payout (as before). One vendor for card+rails is **Thunes**; Stripe is optional for embedded Elements.
+- **Checkout:** [Thunes Accept](https://docs.thunes.com/accept/v1) creates a hosted **payment order** (live redirect; mock can mark it **CHARGED** immediately).
+- **Payout:** [Thunes Money Transfer](https://docs.thunes.com/money-transfer/v2) sends `amountSend` to the recipient’s Thai bank account after payment clears.
+- **Profit / margin:** the customer is charged `totalCharged = amountSend + platformFee`, while the payout side still sends only `amountSend`. That difference is your margin on the collection side, subject to your Thunes settlement model and Thunes fees.
 
 You need Thunes business **API access** for both product lines (Accept and MT) in the corridors you use—onboarding is still required; this repo only wires the calls.
 
@@ -43,8 +53,8 @@ You need Thunes business **API access** for both product lines (Accept and MT) i
 End-to-end sends are behind a pluggable interface in **`src/transfer/rail/`**:
 
 - **`ThailandTransferRail`** — `beginCollection` + `finalizeFromHttpContext`.
-- **Registry** — `getThailandTransferRailForNewTransfer()` (env `THAILAND_TRANSFER_RAIL` or `PAYMENT_PROVIDER` default).
-- **Implementations** — `thunes_e2e` (Thunes Accept + Thunes MT) and `stripe_thunes_payout` (Stripe + Thunes MT for payout).
+- **Registry** — `getThailandTransferRailForNewTransfer()` (env `THAILAND_TRANSFER_RAIL` or default rail).
+- **Implementation today** — `thunes_e2e` (Thunes Accept + Thunes MT).
 
 To add **another vendor** (e.g. Wise, Rapyd): implement `ThailandTransferRail` in a new file, import it in **`registry.ts`**, and register it. Set `THAILAND_TRANSFER_RAIL=<your_id>` to route new creates through it. `TransferRecord.railId` and generic `collectionOrderId` keep HTTP independent of a single brand.
 

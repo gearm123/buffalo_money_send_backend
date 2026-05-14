@@ -1,15 +1,11 @@
 import { loadConfig } from "../config.js";
 
 /**
- * - `thunes`: Thunes **Accept** (card / collections) + **Money Transfer** (Thai account).
- * - `stripe`: Stripe + Thunes MT only.
- * Default: Thunes if `STRIPE_SECRET_KEY` is unset; otherwise Stripe (existing deployments).
+ * Buffalo currently runs the hosted checkout through Thunes only.
+ * Keep this helper so callers can stay provider-agnostic if another supplier is added later.
  */
-export function getPaymentProvider(): "stripe" | "thunes" {
-  const p = (process.env.PAYMENT_PROVIDER || "").toLowerCase();
-  if (p === "thunes") return "thunes";
-  if (p === "stripe") return "stripe";
-  return process.env.STRIPE_SECRET_KEY ? "stripe" : "thunes";
+export function getPaymentProvider(): "thunes" {
+  return "thunes";
 }
 
 /** Live Accept API needs a configured card payment page in Thunes Portal. */
@@ -26,8 +22,5 @@ export function thunesCollectionIsConfigured(): boolean {
 }
 
 export function checkoutIsAvailable(): boolean {
-  if (getPaymentProvider() === "stripe") {
-    return Boolean(process.env.STRIPE_SECRET_KEY);
-  }
   return thunesCollectionIsConfigured();
 }

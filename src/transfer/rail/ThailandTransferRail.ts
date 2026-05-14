@@ -5,8 +5,8 @@ import type { ThailandRailId } from "./railIds.js";
  * Pluggable “Thailand send” product: start payment + (after pay) pay out to a Thai account.
  * Replace **Thunes** with another vendor by adding a new implementation and registering it.
  *
- * - **thunes_e2e**: Thunes Accept (card) + Thunes Money Transfer (Thai bank) — all Thunes.
- * - **stripe_thunes_payout**: Stripe (card) + Thunes MT — swap the payout part later in `payout/*` if needed.
+ * - **thunes_e2e**: Thunes Accept (card) + Thunes Money Transfer (Thai bank).
+ * - Future providers can reuse the same interface and be selected through `registry.ts`.
  */
 export interface ThailandTransferRail {
   /** Must match `TransferRecord.railId` */

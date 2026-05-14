@@ -47,7 +47,7 @@ async function thunesRequest<T>(
 }
 
 /**
- * After Stripe has captured funds, create a Thunes MT quotation → transaction → confirm
+ * After the pay-in side has confirmed funds, create a Thunes MT quotation → transaction → confirm
  * so funds are instructed toward the recipient's Thai bank account.
  * **Idempotent:** safe if webhook and client /complete both call; uses DB fields + in-memory lock.
  */

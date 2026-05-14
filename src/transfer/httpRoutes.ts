@@ -2,10 +2,9 @@ import type { Express, Request, Response } from "express";
 import { quoteThbForAmount } from "./fx.js";
 import { computePlatformFee } from "./platformFee.js";
 import type { TransferRecord } from "./types.js";
-import { getTransfer, getTransferByPaymentIntent, listTransfers } from "./store.js";
+import { getTransfer, listTransfers } from "./store.js";
 import { checkoutIsAvailable, getPaymentProvider } from "../payment/paymentConfig.js";
 import { getThailandTransferRailForNewTransfer, resolveThailandTransferRail } from "./rail/registry.js";
-import { completeTransferClientSide, stripeIsConfigured } from "./stripeTransfer.js";
 import { validateThaiBankAccount } from "./thaiBankAccount.js";
 import { assertAllowedSourceCountry, SOURCE_COUNTRIES } from "./sourceCountries.js";
 import { THAI_BANKS } from "./thaiBanks.js";
@@ -15,10 +14,10 @@ export function registerTransferHttpRoutes(app: Express) {
     const paymentProvider = getPaymentProvider();
     const rail = getThailandTransferRailForNewTransfer();
     res.json({
-      /** @deprecated use paymentProvider + checkoutReady */
-      stripe: paymentProvider === "stripe" && stripeIsConfigured(),
+      /** @deprecated kept for older frontends; Buffalo now runs Thunes-only checkout. */
+      stripe: false,
       paymentProvider,
-      /** Card checkout available (Stripe or Thunes Accept, depending on paymentProvider) */
+      /** Hosted card checkout availability for the active supplier. */
       checkoutReady: checkoutIsAvailable(),
       /** Default rail for new transfers; override with THAILAND_TRANSFER_RAIL. See `src/transfer/rail/`. */
       thailandTransferRail: rail.id,
@@ -72,9 +71,7 @@ export function registerTransferHttpRoutes(app: Express) {
     if (!checkoutIsAvailable()) {
       res.status(503).json({
         error:
-          getPaymentProvider() === "stripe"
-            ? "Stripe is not configured. Set STRIPE_SECRET_KEY in server/.env"
-            : "Thunes checkout is not configured. Set Thunes API + THUNES_ACCEPT_MERCHANT_ID + THUNES_ACCEPT_PAYMENT_PAGE_ID, or use mock (THUNES_USE_MOCK=true).",
+          "Thunes checkout is not configured. Set Thunes API + THUNES_ACCEPT_MERCHANT_ID + THUNES_ACCEPT_PAYMENT_PAGE_ID, or use mock (THUNES_USE_MOCK=true).",
       });
       return;
     }
@@ -117,8 +114,6 @@ export function registerTransferHttpRoutes(app: Express) {
         res.status(404).json({ error: "Transfer not found" });
         return;
       }
-    } else if (body.paymentIntentId) {
-      t = getTransferByPaymentIntent(body.paymentIntentId);
     }
     const rail = resolveThailandTransferRail(t);
     if (rail) {
@@ -134,15 +129,12 @@ export function registerTransferHttpRoutes(app: Express) {
       return;
     }
     if (body.paymentIntentId) {
-      const r = await completeTransferClientSide(body.paymentIntentId);
-      if (!r.ok) {
-        res.status(400).json(r);
-        return;
-      }
-      res.json(r);
+      res.status(400).json({
+        error: "Embedded-card completion is no longer supported. Complete the transfer with transferId.",
+      });
       return;
     }
-    res.status(400).json({ error: "paymentIntentId or transferId required" });
+    res.status(400).json({ error: "transferId required" });
   });
 
   app.get("/api/transfer/:id", (req, res) => {

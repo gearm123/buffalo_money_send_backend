@@ -8,35 +8,17 @@ import { getPaymentProvider } from "./payment/paymentConfig.js";
 import { registerTransferHttpRoutes } from "./transfer/httpRoutes.js";
 import { resolveThailandTransferRail } from "./transfer/rail/registry.js";
 import { getTransferByCollectionOrderId } from "./transfer/store.js";
-import { handleStripeWebhook } from "./transfer/webhookHandler.js";
 
 dotenv.config();
 
 const config = loadConfig();
 const app = express();
 
-app.post(
-  "/api/stripe/webhook",
-  express.raw({ type: "application/json" }),
-  (req, res) => {
-    const sig = req.get("stripe-signature");
-    void (async () => {
-      const body = req.body as Buffer;
-      const r = await handleStripeWebhook(body, sig);
-      if (r.kind === "ok") {
-        res.sendStatus(200);
-        return;
-      }
-      res.status(r.status).send(r.message);
-    })();
-  }
-);
-
 app.use(
   cors({
     origin: true,
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "Stripe-Signature"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use(express.json({ limit: "1mb" }));
@@ -130,7 +112,6 @@ app.get("/api/health", (_req, res) => {
     thunesMode: config.useMock ? "mock" : "live",
     hasBaseUrl: Boolean(config.thunesBaseUrl),
     paymentProvider: getPaymentProvider(),
-    stripe: Boolean(process.env.STRIPE_SECRET_KEY),
   });
 });
 
@@ -159,6 +140,6 @@ app.get("/api/transactions/:id", (req, res) => {
 
 app.listen(config.port, () => {
   console.log(
-    `global-send-api on http://localhost:${config.port} (Thunes: ${config.useMock ? "MOCK" : "live"}) | payment: ${getPaymentProvider()} | Stripe: ${process.env.STRIPE_SECRET_KEY ? "on" : "off"}`
+    `global-send-api on http://localhost:${config.port} (Thunes: ${config.useMock ? "MOCK" : "live"}) | payment: ${getPaymentProvider()}`
   );
 });

@@ -13,7 +13,23 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "20.18.0"
-      - key: STRIPE_SECRET_KEY
+      - key: PAYMENT_PROVIDER
+        value: "thunes"
+      - key: THUNES_BASE_URL
         sync: false
-      - key: STRIPE_PUBLISHABLE_KEY
+      - key: THUNES_API_KEY
+        sync: false
+      - key: THUNES_API_SECRET
+        sync: false
+      - key: THUNES_THAILAND_PAYER_ID
+        sync: false
+      - key: THUNES_ACCEPT_MERCHANT_ID
+        sync: false
+      - key: THUNES_ACCEPT_PAYMENT_PAGE_ID
+        sync: false
+      - key: PUBLIC_API_URL
+        sync: false
+      - key: PUBLIC_WEB_APP_URL
+        sync: false
+      - key: PLATFORM_FEE_PERCENT
         sync: false

@@ -1,7 +1,5 @@
 import type { TransferRecord } from "../types.js";
-import { getPaymentProvider } from "../../payment/paymentConfig.js";
-import { RAIL_STRIPE_THUNES_PAYOUT, RAIL_THUNES_E2E, type ThailandRailId } from "./railIds.js";
-import { stripeThunesPayoutRail } from "./stripeThunesPayoutRail.js";
+import { RAIL_THUNES_E2E, type ThailandRailId } from "./railIds.js";
 import { thunesEndToEndRail } from "./thunesEndToEndRail.js";
 import type { ThailandTransferRail } from "./ThailandTransferRail.js";
 
@@ -10,7 +8,6 @@ import type { ThailandTransferRail } from "./ThailandTransferRail.js";
  */
 const rails: Record<string, ThailandTransferRail> = {
   [RAIL_THUNES_E2E]: thunesEndToEndRail,
-  [RAIL_STRIPE_THUNES_PAYOUT]: stripeThunesPayoutRail,
 };
 
 const KNOWN = Object.keys(rails).join(", ");
@@ -27,15 +24,15 @@ export function getThailandTransferRailById(id: string): ThailandTransferRail {
 
 /**
  * New transfers: which rail to use.
- * - `THAILAND_TRANSFER_RAIL` (e.g. thunes_e2e | stripe_thunes_payout) wins when set and registered.
- * - Otherwise follows `PAYMENT_PROVIDER` (thunes → thunes_e2e, stripe → stripe_thunes_payout).
+ * - `THAILAND_TRANSFER_RAIL` wins when set and registered.
+ * - Otherwise use the default Thunes end-to-end rail.
  */
 export function getThailandTransferRailForNewTransfer(): ThailandTransferRail {
   const override = (process.env.THAILAND_TRANSFER_RAIL || "").trim();
   if (override) {
     return getThailandTransferRailById(override);
   }
-  return getPaymentProvider() === "thunes" ? thunesEndToEndRail : stripeThunesPayoutRail;
+  return thunesEndToEndRail;
 }
 
 export function listThailandTransferRailIds(): ThailandRailId[] {
@@ -55,6 +52,5 @@ export function resolveThailandTransferRail(t: TransferRecord | undefined): Thai
     return rails[t.railId] as ThailandTransferRail;
   }
   if (t.collectionOrderId) return thunesEndToEndRail;
-  if (t.paymentIntentId) return stripeThunesPayoutRail;
   return null;
 }

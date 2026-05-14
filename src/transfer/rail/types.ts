@@ -17,11 +17,13 @@ export type CreateTransferInput = {
 
 export type BeginCollectionResult = {
   transfer: TransferRecord;
-  paymentProvider: "thunes" | "stripe";
+  paymentProvider: "thunes" | (string & {});
   thunesOrderId: string;
   paymentUrl: string | null;
   orderStatus: string;
+  /** Provider-specific embedded checkout token; empty for redirect flows like Thunes Accept. */
   clientSecret: string;
+  /** Provider-specific public key; empty when not needed by the active supplier. */
   publishableKey: string;
 };
 
