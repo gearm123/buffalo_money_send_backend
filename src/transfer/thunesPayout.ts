@@ -56,7 +56,7 @@ export async function executeThunesPayoutByTransferId(transferId: string): Promi
     return;
   }
 
-  const current = getTransfer(transferId);
+  const current = await getTransfer(transferId);
   if (!current) return;
   if (current.thunesTransactionId != null) {
     return;
@@ -69,7 +69,7 @@ export async function executeThunesPayoutByTransferId(transferId: string): Promi
   }
 
   locks.add(transferId);
-  let t = getTransfer(transferId);
+  let t = await getTransfer(transferId);
   if (!t) {
     locks.delete(transferId);
     return;
@@ -88,7 +88,7 @@ export async function executeThunesPayoutByTransferId(transferId: string): Promi
   if (!acctCheck.ok) {
     t.status = "payout_error";
     t.lastError = acctCheck.error;
-    saveTransfer(t);
+    await saveTransfer(t);
     locks.delete(transferId);
     return;
   }
@@ -96,7 +96,7 @@ export async function executeThunesPayoutByTransferId(transferId: string): Promi
 
   t.status = "payout_processing";
   t.lastError = undefined;
-  saveTransfer(t);
+  await saveTransfer(t);
 
   try {
     const payerId = Number(
@@ -160,12 +160,12 @@ export async function executeThunesPayoutByTransferId(transferId: string): Promi
 
     await thunesRequest<ConfirmRes>(config, "POST", `/transactions/${tid}/confirm`, {});
 
-    t = getTransfer(transferId) ?? t;
+    t = (await getTransfer(transferId)) ?? t;
     t.thunesQuotationId = qid;
     t.thunesTransactionId = tid;
     t.status = "payout_completed";
     t.lastError = undefined;
-    saveTransfer(t);
+    await saveTransfer(t);
   } catch (e) {
     const msg =
       e instanceof ThunesHttpError
@@ -175,10 +175,10 @@ export async function executeThunesPayoutByTransferId(transferId: string): Promi
         : e instanceof Error
           ? e.message
           : String(e);
-    t = getTransfer(transferId) ?? t;
+    t = (await getTransfer(transferId)) ?? t;
     t.status = "payout_error";
     t.lastError = msg.slice(0, 2000);
-    saveTransfer(t);
+    await saveTransfer(t);
     console.error("[thunesPayout] failed for", transferId, msg);
   } finally {
     locks.delete(transferId);

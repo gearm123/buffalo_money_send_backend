@@ -183,7 +183,7 @@ export async function createTransferWithThunesCollection(input: CreateInput) {
   }
 
   record.collectionOrderId = orderId;
-  saveTransfer(record);
+  await saveTransfer(record);
 
   const status = normalizeOrderStatus(created.status);
   const paymentUrl =
@@ -202,7 +202,7 @@ export async function createTransferWithThunesCollection(input: CreateInput) {
  * After Thunes shows payment as CHARGED, run Money Transfer to Thailand.
  */
 export async function completeThunesByTransferId(transferId: string) {
-  const t = getTransfer(transferId);
+  const t = await getTransfer(transferId);
   if (!t) {
     return { ok: false as const, error: "Transfer not found" };
   }
@@ -217,6 +217,6 @@ export async function completeThunesByTransferId(transferId: string) {
   }
 
   await executeThunesPayoutByTransferId(transferId);
-  const t2 = getTransfer(transferId);
+  const t2 = await getTransfer(transferId);
   return { ok: true as const, transfer: t2 ?? t };
 }

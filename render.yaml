@@ -1,4 +1,5 @@
 # BuffaloMoneySend API — deploy this repo on Render (Web Service, Node 20)
+# Set DATABASE_URL on this web service to the Internal Database URL from your Render Postgres service.
 # Dashboard: New → Blueprint → connect this GitHub repo
 
 services:
@@ -7,12 +8,14 @@ services:
     runtime: node
     plan: free
     region: oregon
-    buildCommand: npm install
+    buildCommand: npm install && node --input-type=module -e "await import('pg')"
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: "20.18.0"
+      - key: DATABASE_URL
+        sync: false
       - key: PAYMENT_PROVIDER
         value: "thunes"
       - key: THUNES_BASE_URL

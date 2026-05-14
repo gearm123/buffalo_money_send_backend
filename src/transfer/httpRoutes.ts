@@ -28,8 +28,8 @@ export function registerTransferHttpRoutes(app: Express) {
     });
   });
 
-  app.get("/api/transfer/list", (_req, res) => {
-    res.json(listTransfers());
+  app.get("/api/transfer/list", async (_req, res) => {
+    res.json(await listTransfers());
   });
 
   app.post("/api/transfer/quote", (req, res) => {
@@ -109,7 +109,7 @@ export function registerTransferHttpRoutes(app: Express) {
     const body = (req.body ?? {}) as { paymentIntentId?: string; transferId?: string };
     let t: TransferRecord | undefined;
     if (body.transferId) {
-      t = getTransfer(String(body.transferId));
+      t = await getTransfer(String(body.transferId));
       if (!t) {
         res.status(404).json({ error: "Transfer not found" });
         return;
@@ -137,8 +137,8 @@ export function registerTransferHttpRoutes(app: Express) {
     res.status(400).json({ error: "transferId required" });
   });
 
-  app.get("/api/transfer/:id", (req, res) => {
-    const t = getTransfer(req.params.id);
+  app.get("/api/transfer/:id", async (req, res) => {
+    const t = await getTransfer(req.params.id);
     if (!t) {
       res.status(404).json({ error: "Not found" });
       return;

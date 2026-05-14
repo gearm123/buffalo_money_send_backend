@@ -2,9 +2,11 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { loadConfig } from "./config.js";
+import { isDatabaseUrlConfigured, pingDatabase } from "./db.js";
 import { createThunesClient, MT_PREFIX, ThunesHttpError } from "./thunesClient.js";
 import { mockThunesProxy } from "./mockThunes.js";
 import { getPaymentProvider } from "./payment/paymentConfig.js";
+import { registerReferralHttpRoutes } from "./referrals/httpRoutes.js";
 import { registerTransferHttpRoutes } from "./transfer/httpRoutes.js";
 import { resolveThailandTransferRail } from "./transfer/rail/registry.js";
 import { getTransferByCollectionOrderId } from "./transfer/store.js";
@@ -24,6 +26,7 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 
 registerTransferHttpRoutes(app);
+registerReferralHttpRoutes(app);
 
 /** Thunes Accept server-to-server notification — ack fast; idempotency is in thunesPayout. */
 app.post("/api/thunes/accept/notification", (req, res) => {
@@ -31,20 +34,24 @@ app.post("/api/thunes/accept/notification", (req, res) => {
   const body = req.body as { id?: string; payment_order_id?: string; status?: string } | null;
   const orderId = body && typeof body === "object" ? String(body.id ?? body.payment_order_id ?? "") : "";
   if (!orderId) return;
-  const t = getTransferByCollectionOrderId(orderId);
-  const rail = resolveThailandTransferRail(t);
-  if (t && rail) {
-    void rail
-      .finalizeFromHttpContext({ transferId: t.id })
-      .then((r) => {
-        if (!r.ok) {
-          console.error("[thunes accept notification] finalize", r.error);
-        }
-      })
-      .catch((err) => {
-        console.error("[thunes accept notification] complete", err);
-      });
-  }
+  void (async () => {
+    const t = await getTransferByCollectionOrderId(orderId);
+    const rail = resolveThailandTransferRail(t);
+    if (t && rail) {
+      void rail
+        .finalizeFromHttpContext({ transferId: t.id })
+        .then((r) => {
+          if (!r.ok) {
+            console.error("[thunes accept notification] finalize", r.error);
+          }
+        })
+        .catch((err) => {
+          console.error("[thunes accept notification] complete", err);
+        });
+    }
+  })().catch((err) => {
+    console.error("[thunes accept notification] lookup", err);
+  });
 });
 
 function stringifyQuery(q: express.Request["query"]): Record<string, string | undefined> {
@@ -106,12 +113,16 @@ async function proxyMoneyTransfer(
   }
 }
 
-app.get("/api/health", (_req, res) => {
+app.get("/api/health", async (_req, res) => {
+  const databaseUrlConfigured = isDatabaseUrlConfigured();
+  const databaseConnected = await pingDatabase();
   res.json({
-    ok: true,
+    ok: databaseUrlConfigured && databaseConnected,
     thunesMode: config.useMock ? "mock" : "live",
     hasBaseUrl: Boolean(config.thunesBaseUrl),
     paymentProvider: getPaymentProvider(),
+    databaseUrlConfigured,
+    databaseConnected,
   });
 });
 

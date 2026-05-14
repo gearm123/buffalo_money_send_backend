@@ -10,12 +10,22 @@ This was split from a monorepo: **push this directory as its own GitHub reposito
 ```bash
 cd buffalomoneysend-backend
 cp .env.example .env
-# set Thunes env (see .env.example)
+# set DATABASE_URL + Thunes env (see .env.example)
 npm install
 npm run dev
 ```
 
 Listens on `http://localhost:4000` (or `PORT`). Health: `GET /api/health`.
+
+## Database
+
+This API now uses **PostgreSQL** for persistent storage:
+
+- **Transfers** are stored in Postgres instead of process memory.
+- **Referrals** are stored in a separate table with per-name counters.
+- Connection config follows the same pattern as the `translate_chat` project: `DATABASE_URL`, `POSTGRES_URL`, or `DATABASE_URL_FILE`.
+
+On **Render**, create a Postgres service and set the web service's **`DATABASE_URL`** to the Postgres service's **Internal Database URL**.
 
 ## Deploy (Render)
 
@@ -25,6 +35,7 @@ Listens on `http://localhost:4000` (or `PORT`). Health: `GET /api/health`.
    - **Start:** `npm start`  
    - **Health check path:** `/api/health`
 3. Set environment variables from `.env.example`, especially:
+   - `DATABASE_URL`
    - `THUNES_BASE_URL`
    - `THUNES_API_KEY`
    - `THUNES_API_SECRET`
@@ -59,3 +70,34 @@ End-to-end sends are behind a pluggable interface in **`src/transfer/rail/`**:
 To add **another vendor** (e.g. Wise, Rapyd): implement `ThailandTransferRail` in a new file, import it in **`registry.ts`**, and register it. Set `THAILAND_TRANSFER_RAIL=<your_id>` to route new creates through it. `TransferRecord.railId` and generic `collectionOrderId` keep HTTP independent of a single brand.
 
 Payout to Thai banks is still under **`thunesPayout.ts`** for the Thunes MT path; a second provider would add its own client module and call it from a new rail (or a shared `payout/` adapter if you only swap the last mile).
+
+## Referral endpoints
+
+The API also tracks referral counts by name in Postgres.
+
+- `POST /api/referrals/record`
+  - body: `{ "name": "Alice" }`
+  - increments the stored value for that name
+- `POST /api/referrals/reset`
+  - body: `{ "name": "Alice" }` resets just one name to `0`
+  - body: `{}` resets **all** names to `0`
+- `GET /api/referrals`
+  - returns the current list as JSON
+- `GET /api/referrals/export`
+  - returns a CSV download suitable for `curl`
+
+Examples:
+
+```bash
+curl -X POST http://localhost:4000/api/referrals/record \
+  -H "Content-Type: application/json" \
+  -d "{\"name\":\"Alice\"}"
+```
+
+```bash
+curl http://localhost:4000/api/referrals
+```
+
+```bash
+curl -L http://localhost:4000/api/referrals/export -o referrals.csv
+```
