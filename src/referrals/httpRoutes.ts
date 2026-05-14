@@ -9,6 +9,17 @@ function toCsvValue(value: string | number): string {
   return text;
 }
 
+function wantsPretty(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  const normalized = value.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+function toPrettyReferralText(items: { name: string; value: number }[]): string {
+  const widestName = items.reduce((max, item) => Math.max(max, item.name.length), 4);
+  return items.map((item) => `${item.name.padEnd(widestName)} : ${item.value}`).join("\n");
+}
+
 export function registerReferralHttpRoutes(app: Express) {
   app.post("/api/referrals/record", async (req, res) => {
     try {
@@ -36,8 +47,15 @@ export function registerReferralHttpRoutes(app: Express) {
     }
   });
 
-  app.get("/api/referrals", async (_req, res) => {
-    res.json({ items: await listReferrals() });
+  app.get("/api/referrals", async (req, res) => {
+    const items = await listReferrals();
+    const pretty = Array.isArray(req.query.pretty) ? req.query.pretty[0] : req.query.pretty;
+    if (wantsPretty(pretty)) {
+      res.setHeader("Content-Type", "text/plain; charset=utf-8");
+      res.send(toPrettyReferralText(items));
+      return;
+    }
+    res.json({ items });
   });
 
   app.get("/api/referrals/export", async (_req, res) => {

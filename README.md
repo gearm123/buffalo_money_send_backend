@@ -83,6 +83,7 @@ The API also tracks referral counts by name in Postgres.
   - body: `{}` resets **all** names to `0`
 - `GET /api/referrals`
   - returns the current list as JSON
+  - add `?pretty=1` to get a plain-text human-readable list like `Alice : 3`
 - `GET /api/referrals/export`
   - returns a CSV download suitable for `curl`
 
@@ -96,6 +97,10 @@ curl -X POST http://localhost:4000/api/referrals/record \
 
 ```bash
 curl http://localhost:4000/api/referrals
+```
+
+```bash
+curl http://localhost:4000/api/referrals?pretty=1
 ```
 
 ```bash
