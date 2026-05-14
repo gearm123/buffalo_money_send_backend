@@ -9,6 +9,7 @@ export type ReferralRow = {
 const DEFAULT_REFERRAL_NAMES = [
   "Maprang",
   "JJ",
+  "Jame lyon",
   "Hanoy",
   "Jessie",
   "Sarinya",
@@ -17,7 +18,7 @@ const DEFAULT_REFERRAL_NAMES = [
   "Gift",
   "Bella",
   "Manaya Empty",
-  "Jame lyon",
+  "saowalak",
 ] as const;
 
 let initPromise: Promise<void> | null = null;
