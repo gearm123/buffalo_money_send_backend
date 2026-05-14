@@ -6,6 +6,20 @@ export type ReferralRow = {
   updatedAt: string;
 };
 
+const DEFAULT_REFERRAL_NAMES = [
+  "Maprang",
+  "JJ",
+  "Hanoy",
+  "Jessie",
+  "Sarinya",
+  "Patty Prosuwan",
+  "Kofi",
+  "Gift",
+  "Bella",
+  "Manaya Empty",
+  "Jame lyon",
+] as const;
+
 let initPromise: Promise<void> | null = null;
 
 function normalizeReferralName(name: string): { key: string; display: string } {
@@ -30,6 +44,18 @@ async function ensureReferralStore() {
       `);
       await pool.query(`create index if not exists referrals_name_idx on referrals (name)`);
       await pool.query(`create index if not exists referrals_updated_at_idx on referrals (updated_at desc)`);
+
+      for (const name of DEFAULT_REFERRAL_NAMES) {
+        const { key, display } = normalizeReferralName(name);
+        await pool.query(
+          `
+            insert into referrals (name_key, name, value, updated_at)
+            values ($1, $2, 0, now())
+            on conflict (name_key) do nothing
+          `,
+          [key, display]
+        );
+      }
     })();
   }
   await initPromise;
