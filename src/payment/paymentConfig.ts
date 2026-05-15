@@ -8,6 +8,10 @@ export function getPaymentProvider(): "thunes" {
   return "thunes";
 }
 
+export function getThunesMode(): "mock" | "live" {
+  return loadConfig().useMock ? "mock" : "live";
+}
+
 /** Live Accept API needs a configured card payment page in Thunes Portal. */
 export function thunesCollectionIsConfigured(): boolean {
   const c = loadConfig();

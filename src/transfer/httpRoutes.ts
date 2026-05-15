@@ -3,7 +3,7 @@ import { quoteThbForAmount } from "./fx.js";
 import { computePlatformFee } from "./platformFee.js";
 import type { TransferRecord } from "./types.js";
 import { getTransfer, listTransfers } from "./store.js";
-import { checkoutIsAvailable, getPaymentProvider } from "../payment/paymentConfig.js";
+import { checkoutIsAvailable, getPaymentProvider, getThunesMode } from "../payment/paymentConfig.js";
 import { getThailandTransferRailForNewTransfer, resolveThailandTransferRail } from "./rail/registry.js";
 import { validateThaiBankAccount } from "./thaiBankAccount.js";
 import { assertAllowedSourceCountry, SOURCE_COUNTRIES } from "./sourceCountries.js";
@@ -17,6 +17,7 @@ export function registerTransferHttpRoutes(app: Express) {
       /** @deprecated kept for older frontends; Buffalo now runs Thunes-only checkout. */
       stripe: false,
       paymentProvider,
+      thunesMode: getThunesMode(),
       /** Hosted card checkout availability for the active supplier. */
       checkoutReady: checkoutIsAvailable(),
       /** Default rail for new transfers; override with THAILAND_TRANSFER_RAIL. See `src/transfer/rail/`. */

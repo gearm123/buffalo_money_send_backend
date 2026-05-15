@@ -10,7 +10,7 @@ This was split from a monorepo: **push this directory as its own GitHub reposito
 ```bash
 cd buffalomoneysend-backend
 cp .env.example .env
-# set DATABASE_URL + Thunes env (see .env.example)
+# set DATABASE_URL (required). Leave THUNES_USE_MOCK=true for the local hosted mock payment flow.
 npm install
 npm run dev
 ```
@@ -53,11 +53,33 @@ The Vite + React app lives in a **separate repository**. Point it at this API wi
 
 ## Checkout and payout
 
-- **Checkout:** [Thunes Accept](https://docs.thunes.com/accept/v1) creates a hosted **payment order** (live redirect; mock can mark it **CHARGED** immediately).
+- **Checkout:** [Thunes Accept](https://docs.thunes.com/accept/v1) creates a hosted **payment order**. In mock mode, Buffalo serves a local hosted payment page with pay / cancel / fail actions but keeps the same redirect contract as live.
 - **Payout:** [Thunes Money Transfer](https://docs.thunes.com/money-transfer/v2) sends `amountSend` to the recipient’s Thai bank account after payment clears.
 - **Profit / margin:** the customer is charged `totalCharged = amountSend + platformFee`, while the payout side still sends only `amountSend`. That difference is your margin on the collection side, subject to your Thunes settlement model and Thunes fees.
 
 You need Thunes business **API access** for both product lines (Accept and MT) in the corridors you use—onboarding is still required; this repo only wires the calls.
+
+## Mock Thunes quickstart
+
+Use this when you want the full Buffalo send flow working before Thunes approves your live account.
+
+1. Set `DATABASE_URL` in `.env`.
+2. Keep `THUNES_USE_MOCK=true`.
+3. Set `PUBLIC_API_URL=http://localhost:4000`.
+4. Set `PUBLIC_WEB_APP_URL=http://localhost:5173`.
+5. Start the API with `npm run dev`.
+
+When the front end creates a transfer in mock mode, step 4 opens a hosted mock payment page served by this API. Choosing **Pay now** returns to the app and completes the mock payout; **Cancel payment** and **Simulate payment error** exercise the return/error paths.
+
+When you are approved for live Thunes, keep the same flow and replace only the environment values:
+
+- set `THUNES_BASE_URL`
+- set `THUNES_API_KEY`
+- set `THUNES_API_SECRET`
+- set `THUNES_ACCEPT_MERCHANT_ID`
+- set `THUNES_ACCEPT_PAYMENT_PAGE_ID`
+- set `THUNES_THAILAND_PAYER_ID`
+- set `THUNES_USE_MOCK=false`
 
 ## Swapping the Thailand “rail” (provider)
 

@@ -6,6 +6,7 @@
 const store = {
   quotationSeq: 700000,
   transactionSeq: 800000,
+  paymentOrders: new Map<string, MockPaymentOrder>(),
 };
 
 function nextQid() {
@@ -20,6 +21,43 @@ function nextTid() {
 
 type Json = Record<string, unknown>;
 
+type MockPaymentOrder = {
+  id: string;
+  external_id?: string;
+  status: string;
+  requested?: { amount?: number; currency?: string };
+  payment_url: string | null;
+  creation_date: string;
+  merchant_id?: string;
+  integration_mode?: string;
+  return_url?: string;
+  notification_url?: string;
+  error_url?: string;
+  aborted_url?: string;
+};
+
+function paymentOrderBaseUrl(body: Json): string {
+  const merchantUrls = (body.merchant_urls as Json | undefined) ?? {};
+  const notificationUrl = typeof merchantUrls.notification_url === "string" ? merchantUrls.notification_url : "";
+  if (notificationUrl) {
+    try {
+      return new URL(notificationUrl).origin;
+    } catch {
+      // fall through to env/default
+    }
+  }
+  return (process.env.PUBLIC_API_URL || `http://localhost:${process.env.PORT || 4000}`).replace(/\/$/, "");
+}
+
+function asAmount(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return undefined;
+}
+
 export async function mockThunesProxy(
   method: string,
   path: string,
@@ -33,29 +71,43 @@ export async function mockThunesProxy(
   if (method === "POST" && path === `${acceptP}/payment-orders`) {
     const b = body as Json;
     const id = `acc-mock-${7000000 + nextQid()}`;
+    const merchantUrls = (b.merchant_urls as Json | undefined) ?? {};
+    const paymentUrl = `${paymentOrderBaseUrl(b)}/mock/thunes/pay/${encodeURIComponent(id)}`;
+    const order: MockPaymentOrder = {
+      id,
+      external_id: typeof b.external_id === "string" ? b.external_id : undefined,
+      status: "PENDING",
+      requested: {
+        amount: asAmount((b.requested as Json | undefined)?.amount),
+        currency: typeof (b.requested as Json | undefined)?.currency === "string" ? String((b.requested as Json).currency) : undefined,
+      },
+      payment_url: paymentUrl,
+      creation_date: new Date().toISOString(),
+      merchant_id: typeof b.merchant_id === "string" ? b.merchant_id : undefined,
+      integration_mode: typeof b.integration_mode === "string" ? b.integration_mode : "REDIRECT",
+      return_url: typeof merchantUrls.return_url === "string" ? merchantUrls.return_url : undefined,
+      notification_url: typeof merchantUrls.notification_url === "string" ? merchantUrls.notification_url : undefined,
+      error_url: typeof merchantUrls.error_url === "string" ? merchantUrls.error_url : undefined,
+      aborted_url: typeof merchantUrls.aborted_url === "string" ? merchantUrls.aborted_url : undefined,
+    };
+    store.paymentOrders.set(id, order);
     return {
       status: 201,
-      data: {
-        id,
-        external_id: b.external_id,
-        status: "CHARGED",
-        requested: b.requested,
-        payment_url: null,
-        creation_date: new Date().toISOString(),
-        merchant_id: b.merchant_id,
-        integration_mode: b.integration_mode ?? "REDIRECT",
-      },
+      data: order,
     };
   }
   if (method === "GET" && new RegExp(`^${acceptP}/payment-orders/[^/]+$`).test(path)) {
     const id = path.split("/").pop() as string;
+    const order = store.paymentOrders.get(id);
+    if (!order) {
+      return {
+        status: 404,
+        data: { errors: [{ code: "MOCK_404", message: `Mock payment order not found: ${id}` }] },
+      };
+    }
     return {
       status: 200,
-      data: {
-        id,
-        status: "CHARGED",
-        payment_url: null,
-      },
+      data: order,
     };
   }
 
@@ -235,4 +287,15 @@ export async function mockThunesProxy(
     status: 404,
     data: { errors: [{ code: "MOCK_404", message: `No mock for ${method} ${path}` }] },
   };
+}
+
+export function getMockPaymentOrder(id: string): MockPaymentOrder | undefined {
+  return store.paymentOrders.get(id);
+}
+
+export function setMockPaymentOrderStatus(id: string, status: "PENDING" | "CHARGED" | "FAILED" | "ABORTED") {
+  const order = store.paymentOrders.get(id);
+  if (!order) return undefined;
+  order.status = status;
+  return order;
 }
