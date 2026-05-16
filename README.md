@@ -10,7 +10,7 @@ This was split from a monorepo: **push this directory as its own GitHub reposito
 ```bash
 cd buffalomoneysend-backend
 cp .env.example .env
-# set DATABASE_URL (required). Leave THUNES_USE_MOCK=true for the local hosted mock payment flow.
+# set DATABASE_URL (required). Leave RIA_ACTIVE=false and RIA_USE_MOCK=true for now.
 npm install
 npm run dev
 ```
@@ -36,16 +36,15 @@ On **Render**, create a Postgres service and set the web service's **`DATABASE_U
    - **Health check path:** `/api/health`
 3. Set environment variables from `.env.example`, especially:
    - `DATABASE_URL`
-   - `THUNES_BASE_URL`
-   - `THUNES_API_KEY`
-   - `THUNES_API_SECRET`
-   - `THUNES_THAILAND_PAYER_ID`
-   - `THUNES_ACCEPT_MERCHANT_ID`
-   - `THUNES_ACCEPT_PAYMENT_PAGE_ID`
+   - `RIA_ACTIVE`
+   - `RIA_BASE_URL`
+   - `RIA_API_KEY`
+   - `RIA_API_SECRET`
+   - `RIA_CLIENT_IP_ADDRESS`
    - `PUBLIC_API_URL`
    - `PUBLIC_WEB_APP_URL`
    - `PLATFORM_FEE_PERCENT`
-4. For **Thailand bank payout** via the Thunes Money Transfer API, set `THUNES_THAILAND_PAYER_ID` to the payer Thunes gives you for that corridor. With `THUNES_USE_MOCK=true`, the mock defaults to `90002` if this is unset.
+4. Keep `RIA_ACTIVE=false` until you are ready to let the normal transfer flow use Ria directly.
 
 ## Front end
 
@@ -53,33 +52,75 @@ The Vite + React app lives in a **separate repository**. Point it at this API wi
 
 ## Checkout and payout
 
-- **Checkout:** [Thunes Accept](https://docs.thunes.com/accept/v1) creates a hosted **payment order**. In mock mode, Buffalo serves a local hosted payment page with pay / cancel / fail actions but keeps the same redirect contract as live.
-- **Payout:** [Thunes Money Transfer](https://docs.thunes.com/money-transfer/v2) sends `amountSend` to the recipient’s Thai bank account after payment clears.
-- **Profit / margin:** the customer is charged `totalCharged = amountSend + platformFee`, while the payout side still sends only `amountSend`. That difference is your margin on the collection side, subject to your Thunes settlement model and Thunes fees.
+- The backend now exposes a **Ria official staging-style API layer** for internal use under `/api/ria/*`.
+- The normal app transfer flow remains **inactive** for Ria while `RIA_ACTIVE=false`.
+- This lets you keep Ria implemented on the backend now, while you use a separate first-stage affiliate/referral path before activating direct transfer flows later.
 
-You need Thunes business **API access** for both product lines (Accept and MT) in the corridors you use—onboarding is still required; this repo only wires the calls.
+This backend keeps the **Ria integration implemented but inactive by default**. The dedicated `/api/ria/*` routes are intended for internal testing and later rollout work.
 
-## Mock Thunes quickstart
+## Mock Ria quickstart
 
-Use this when you want the full Buffalo send flow working before Thunes approves your live account.
+Use this when you want the Ria backend routes available for internal testing before real Ria access is active.
 
 1. Set `DATABASE_URL` in `.env`.
-2. Keep `THUNES_USE_MOCK=true`.
-3. Set `PUBLIC_API_URL=http://localhost:4000`.
-4. Set `PUBLIC_WEB_APP_URL=http://localhost:5173`.
-5. Start the API with `npm run dev`.
+2. Keep `RIA_ACTIVE=false`.
+3. Keep `RIA_USE_MOCK=true`.
+4. Set `RIA_CLIENT_IP_ADDRESS=127.0.0.1`.
+4. Set `PUBLIC_API_URL=http://localhost:4000`.
+5. Set `PUBLIC_WEB_APP_URL=http://localhost:5173`.
+6. Start the API with `npm run dev`.
 
-When the front end creates a transfer in mock mode, step 4 opens a hosted mock payment page served by this API. Choosing **Pay now** returns to the app and completes the mock payout; **Cancel payment** and **Simulate payment error** exercise the return/error paths.
+At this stage, the normal app transfer flow is intentionally blocked from using Ria. Instead, use the `/api/ria/*` endpoints only for internal testing.
 
-When you are approved for live Thunes, keep the same flow and replace only the environment values:
+When you are ready to connect and activate a live Ria integration:
 
-- set `THUNES_BASE_URL`
-- set `THUNES_API_KEY`
-- set `THUNES_API_SECRET`
-- set `THUNES_ACCEPT_MERCHANT_ID`
-- set `THUNES_ACCEPT_PAYMENT_PAGE_ID`
-- set `THUNES_THAILAND_PAYER_ID`
-- set `THUNES_USE_MOCK=false`
+- set `RIA_ACTIVE=true`
+- set `RIA_BASE_URL`
+- set `RIA_API_KEY`
+- set `RIA_API_SECRET`
+- set `RIA_CLIENT_IP_ADDRESS`
+- set `RIA_USE_MOCK=false`
+
+## Ria Auth Model
+
+The current backend follows the public Ria staging documentation pattern:
+
+- **Basic auth** with `RIA_API_KEY` and `RIA_API_SECRET`
+- required `ClientIpAddress` header on every Ria call
+- **customer authentication** through `/Authenticate`
+- subsequent customer-scoped calls use a **Session** token
+
+For internal testing, pass these headers to customer-authenticated backend routes:
+
+- `x-ria-customer-id`
+- `x-ria-customer-password`
+
+Or pass:
+
+- `x-ria-session-token`
+
+If no session token is supplied, the backend will try to authenticate first using the customer-id/password headers.
+
+## Official Ria Routes
+
+The backend currently exposes these official staging-style Ria routes:
+
+- `GET /api/ria/Authenticate`
+- `GET /api/ria/v1/Location/GetSendToCountries`
+- `PUT /api/ria/v1/Location/GetAvailableCurrenciesForCountry`
+- `PUT /api/ria/v1/Location/GetAvailableDeliveryMethodsForCountry`
+- `POST /api/ria/v1/Partner/CalculateFee`
+- `POST /api/ria/v1/Partner/ValidateOrder`
+- `PUT /api/ria/v1/Pricing/GetServicesAvailable`
+- `PUT /api/ria/v1/Pricing/CalculateFee`
+- `GET /api/ria/v1/Payment/GetAvailablePaymentMethods`
+- `PUT /api/ria/v1/Order/ValidateMoneyTransferOrder`
+- `PUT /api/ria/v1/Order/CreateMoneyTransferOrderV2`
+- `PUT /api/ria/v1/Order/ConfirmOrder`
+- `PUT /api/ria/v1/Order/CancelOrder`
+- `PUT /api/ria/v1/Order/RefundOrder`
+- `PUT /api/ria/v1/Order/GetOrderDetailsByOrderId`
+- `GET /api/ria/v1/Order/ProcessOrderStatusChangeNotifications`
 
 ## Swapping the Thailand “rail” (provider)
 
@@ -87,11 +128,11 @@ End-to-end sends are behind a pluggable interface in **`src/transfer/rail/`**:
 
 - **`ThailandTransferRail`** — `beginCollection` + `finalizeFromHttpContext`.
 - **Registry** — `getThailandTransferRailForNewTransfer()` (env `THAILAND_TRANSFER_RAIL` or default rail).
-- **Implementation today** — `thunes_e2e` (Thunes Accept + Thunes MT).
+- **Implementation today** — `ria_e2e`, but the normal transfer flow only uses it when `RIA_ACTIVE=true`.
 
 To add **another vendor** (e.g. Wise, Rapyd): implement `ThailandTransferRail` in a new file, import it in **`registry.ts`**, and register it. Set `THAILAND_TRANSFER_RAIL=<your_id>` to route new creates through it. `TransferRecord.railId` and generic `collectionOrderId` keep HTTP independent of a single brand.
 
-Payout to Thai banks is still under **`thunesPayout.ts`** for the Thunes MT path; a second provider would add its own client module and call it from a new rail (or a shared `payout/` adapter if you only swap the last mile).
+The existing `ria_e2e` transfer rail remains a dormant scaffold and is not the primary integration path right now. The official internal `/api/ria/*` API layer is the part aligned to Ria staging docs.
 
 ## Referral endpoints
 

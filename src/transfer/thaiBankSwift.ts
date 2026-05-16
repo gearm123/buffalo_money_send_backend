@@ -1,6 +1,6 @@
 /**
- * SWIFT BIC (8 characters) for Thai banks — Thunes bank payouts often need this
- * with the account number. **Verify** against your Thunes / bank documentation in production.
+ * SWIFT BIC (8 characters) for Thai banks — the provider payout flow may need this
+ * with the account number. Verify against your live provider and bank documentation.
  */
 const CODE_TO_BIC: Record<string, string> = {
   BBL: "BKKBTHBK",

@@ -1,7 +1,7 @@
 /**
  * Domestic Thai account number length rules (digit count after stripping non-digits).
- * Thunes will still reject bad accounts at transaction time; this only catches obvious format errors.
- * Sources: common Thai banking references; **verify** against your Thunes corridor docs in production.
+ * The live provider may still reject bad accounts at transaction time; this only catches obvious format errors.
+ * Sources: common Thai banking references; verify against your active payout corridor docs in production.
  */
 const ALLOWED_DIGIT_COUNTS: Record<string, readonly number[]> = {
   BBL: [10],
@@ -19,7 +19,7 @@ const ALLOWED_DIGIT_COUNTS: Record<string, readonly number[]> = {
 };
 
 /**
- * @returns Digits only, for Thunes `bank_account_number`.
+ * @returns Digits only, for the provider `bank_account_number`.
  */
 export function thaiAccountDigitsOnly(raw: string): string {
   return raw.replace(/\D/g, "");

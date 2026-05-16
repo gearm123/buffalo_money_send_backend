@@ -1,7 +1,7 @@
 /**
  * Product model (example: 4% fee, user sends $100):
  * - Customer is charged totalCharged = amountSend + platformFee → e.g. $104.
- * - Thunes remittance uses amountSend only → e.g. $100 to the recipient rail; platformFee stays with your business on the collection side, subject to your Thunes settlement terms and fees.
+ * - The payout rail uses amountSend only → e.g. $100 to the recipient rail; platformFee stays with your business on the collection side.
  * Set PLATFORM_FEE_PERCENT in server env (e.g. "4" = 4% of send → $4 fee on $100; card $104).
  */
 export function getPlatformFeePercent(): number {

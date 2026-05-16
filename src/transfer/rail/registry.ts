@@ -1,13 +1,13 @@
 import type { TransferRecord } from "../types.js";
-import { RAIL_THUNES_E2E, type ThailandRailId } from "./railIds.js";
-import { thunesEndToEndRail } from "./thunesEndToEndRail.js";
+import { RAIL_RIA_E2E, type ThailandRailId } from "./railIds.js";
+import { riaEndToEndRail } from "./riaEndToEndRail.js";
 import type { ThailandTransferRail } from "./ThailandTransferRail.js";
 
 /**
  * All registered rails. To add e.g. Wise: implement `ThailandTransferRail`, import here, and add a key.
  */
 const rails: Record<string, ThailandTransferRail> = {
-  [RAIL_THUNES_E2E]: thunesEndToEndRail,
+  [RAIL_RIA_E2E]: riaEndToEndRail,
 };
 
 const KNOWN = Object.keys(rails).join(", ");
@@ -25,14 +25,14 @@ export function getThailandTransferRailById(id: string): ThailandTransferRail {
 /**
  * New transfers: which rail to use.
  * - `THAILAND_TRANSFER_RAIL` wins when set and registered.
- * - Otherwise use the default Thunes end-to-end rail.
+ * - Otherwise use the default Ria end-to-end rail.
  */
 export function getThailandTransferRailForNewTransfer(): ThailandTransferRail {
   const override = (process.env.THAILAND_TRANSFER_RAIL || "").trim();
   if (override) {
     return getThailandTransferRailById(override);
   }
-  return thunesEndToEndRail;
+  return riaEndToEndRail;
 }
 
 export function listThailandTransferRailIds(): ThailandRailId[] {
@@ -51,6 +51,6 @@ export function resolveThailandTransferRail(t: TransferRecord | undefined): Thai
   if (t.railId && t.railId in rails) {
     return rails[t.railId] as ThailandTransferRail;
   }
-  if (t.collectionOrderId) return thunesEndToEndRail;
+  if (t.collectionOrderId) return riaEndToEndRail;
   return null;
 }

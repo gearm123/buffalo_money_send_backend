@@ -1,30 +1,35 @@
 import { loadConfig } from "../config.js";
 
 /**
- * Buffalo currently runs the hosted checkout through Thunes only.
+ * Buffalo currently keeps the Ria implementation in the backend, but it can stay
+ * inactive for the normal app flow until commercial approval and rollout.
  * Keep this helper so callers can stay provider-agnostic if another supplier is added later.
  */
-export function getPaymentProvider(): "thunes" {
-  return "thunes";
+export function getPaymentProvider(): "ria" {
+  return "ria";
 }
 
-export function getThunesMode(): "mock" | "live" {
+export function getRiaMode(): "mock" | "live" {
   return loadConfig().useMock ? "mock" : "live";
 }
 
-/** Live Accept API needs a configured card payment page in Thunes Portal. */
-export function thunesCollectionIsConfigured(): boolean {
+export function isRiaActive(): boolean {
+  return loadConfig().riaActive;
+}
+
+/** Live Ria setup needs a configured collection page id and credentials. */
+export function riaCollectionIsConfigured(): boolean {
   const c = loadConfig();
   if (c.useMock) return true;
   return Boolean(
-    c.thunesBaseUrl &&
+    c.riaBaseUrl &&
       c.apiKey &&
       c.apiSecret &&
-      process.env.THUNES_ACCEPT_MERCHANT_ID &&
-      process.env.THUNES_ACCEPT_PAYMENT_PAGE_ID
+      process.env.RIA_COLLECTION_MERCHANT_ID &&
+      process.env.RIA_COLLECTION_PAGE_ID
   );
 }
 
 export function checkoutIsAvailable(): boolean {
-  return thunesCollectionIsConfigured();
+  return isRiaActive() && riaCollectionIsConfigured();
 }

@@ -24,26 +24,38 @@ export type TransferRecord = {
   sender: {
     fullName: string;
     email: string;
+    phone?: string;
+    billingAddress1?: string;
+    billingAddress2?: string;
+    billingCity?: string;
+    billingState?: string;
+    billingPostalCode?: string;
   };
   thaiRecipient: {
     fullName: string;
     bankCode: string;
     accountNumber: string;
+    bankName?: string;
+    deliveryMethod?: "bank" | "cash" | "wallet";
+    phone?: string;
+    payoutCity?: string;
   };
-  /** Legacy embedded-card field; unused by the current Thunes checkout path. */
+  /** Legacy embedded-card field; unused by the current redirect checkout path. */
   paymentIntentId: string | null;
   /**
    * Which `ThailandTransferRail` created this row — see `src/transfer/rail/registry.ts`.
-   * e.g. `thunes_e2e` today, or a future provider-specific rail id.
+   * e.g. `ria_e2e` today, or a future provider-specific rail id.
    */
   railId: string;
   /**
-   * Provider-agnostic pay-in reference (Thunes Accept order id, future supplier order id, etc.).
+   * Provider-agnostic pay-in reference (Ria collection order id, future supplier order id, etc.).
    */
   collectionOrderId: string | null;
   status: PayoutToThailandStatus;
   lastError?: string;
-  /** Thunes Money Transfer API — set after a successful flow */
-  thunesQuotationId?: number;
-  thunesTransactionId?: number;
+  flowMode?: "public" | "partner";
+  /** Ria payout quote id — set after a successful payout flow. */
+  riaQuoteId?: number;
+  /** Ria payout transfer id — set after a successful payout flow. */
+  riaTransferId?: number;
 };
